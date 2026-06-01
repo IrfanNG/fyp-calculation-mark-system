@@ -1,0 +1,625 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Course {
+  id        String      @id @default(cuid())
+  code      String
+  name      String
+  semester  String?
+  year      Int?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  clos        Clo[]
+  assessments Assessment[]
+  classes     CourseClass[]
+  markEntries MarkEntry[]
+  lecturers   CourseLecturer[]
+
+  @@unique([code, semester, year])
+}
+
+model Lecturer {
+  id           String   @id @default(cuid())
+  staffId      String   @unique
+  name         String
+  passwordHash String
+  isAdmin      Boolean  @default(false)
+  role         String   @default("supervisor") // supervisor | assessor | coordinator
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  courses       CourseLecturer[]
+  announcements Announcement[]
+  comments      Comment[]
+
+  // FYP relations
+  supervisedProjects      FypProject[]              @relation("ProjectSupervisor")
+  assessorAssignments     AssessorAssignment[]
+  supervisorMarks         SupervisorMark[]
+  assessorMarks           AssessorMark[]
+  coordinatorMarks        CoordinatorMark[]
+  feedbacks               FypFeedback[]
+  presentationAssessments FypPresentationAssessment[]
+  reportAssessments       FypReportAssessment[]
+  progressDefenseAssessments FypProgressDefenseAssessment[]
+  progressWeek14Assessments  FypProgressWeek14Assessment[]
+}
+
+// Junction table for many-to-many Course <-> Lecturer
+model CourseLecturer {
+  courseId   String
+  lecturerId String
+  assignedAt DateTime @default(now())
+
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lecturer Lecturer   @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, lecturerId])
+  @@index([courseId])
+  @@index([lecturerId])
+}
+
+model CourseClass {
+  id        String   @id @default(cuid())
+  courseId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course             Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  markEntries        MarkEntry[]
+  enrollments        Enrollment[]
+  announcements      Announcement[]
+  attendanceSessions AttendanceSession[]
+  assignments        Assignment[]
+
+  @@unique([courseId, name])
+  @@index([courseId])
+}
+
+model Student {
+  id           String   @id @default(cuid())
+  studentId    String   @unique
+  name         String
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollments          Enrollment[]
+  attendanceRecords    AttendanceRecord[]
+  assignmentSubmissions AssignmentSubmission[]
+  comments             Comment[]
+
+  // FYP relation
+  fypProject FypProject?
+}
+
+model Clo {
+  id          String   @id @default(cuid())
+  courseId    String
+  code        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assessmentClo AssessmentClo[]
+
+  @@unique([courseId, code])
+  @@index([courseId])
+}
+
+model Assessment {
+  id        String   @id @default(cuid())
+  courseId  String
+  name      String
+  weightage Int
+  fullMark  Int?
+  createdAt DateTime @default(now())
+
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assessmentClo AssessmentClo[]
+  markEntries  MarkEntry[]
+
+  @@index([courseId])
+}
+
+model AssessmentClo {
+  assessmentId String
+  cloId        String
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  clo        Clo        @relation(fields: [cloId], references: [id], onDelete: Cascade)
+
+  @@id([assessmentId, cloId])
+  @@index([cloId])
+}
+
+model MarkEntry {
+  id           String   @id @default(cuid())
+  courseId     String
+  courseClassId String?
+  assessmentId String
+  studentName  String
+  studentId    String?
+  rawMark      Float
+  fullMark     Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseClass CourseClass?  @relation(fields: [courseClassId], references: [id], onDelete: SetNull)
+  assessment  Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  history     MarkHistory[]
+  comments    Comment[]
+
+  @@index([courseId])
+  @@index([courseClassId])
+  @@index([assessmentId])
+}
+
+model GpaScale {
+  id        String   @id @default(cuid())
+  minMark   Int
+  maxMark   Int
+  grade     String
+  gpa       Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([minMark])
+}
+
+// Enrollment: Students enrolled in specific classes
+model Enrollment {
+  id            String   @id @default(cuid())
+  studentId     String
+  courseClassId String
+  enrolledAt    DateTime @default(now())
+  
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseClass CourseClass @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseClassId])
+  @@index([studentId])
+  @@index([courseClassId])
+}
+
+// Mark History: Audit trail for mark changes
+model MarkHistory {
+  id          String   @id @default(cuid())
+  markEntryId String
+  oldValue    Float?
+  newValue    Float
+  changedBy   String   // lecturer name or "system"
+  changedAt   DateTime @default(now())
+
+  markEntry MarkEntry @relation(fields: [markEntryId], references: [id], onDelete: Cascade)
+
+  @@index([markEntryId])
+}
+
+// Announcements from lecturers
+model Announcement {
+  id            String   @id @default(cuid())
+  lecturerId    String
+  courseClassId String?
+  title         String
+  content       String
+  publishedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lecturer    Lecturer     @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+  courseClass CourseClass? @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
+
+  @@index([lecturerId])
+  @@index([courseClassId])
+}
+
+// Attendance tracking
+model AttendanceSession {
+  id            String   @id @default(cuid())
+  courseClassId String
+  sessionDate   DateTime
+  sessionName   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  courseClass CourseClass        @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
+  records     AttendanceRecord[]
+
+  @@index([courseClassId])
+}
+
+model AttendanceRecord {
+  id        String   @id @default(cuid())
+  sessionId String
+  studentId String
+  present   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([sessionId])
+  @@index([studentId])
+}
+
+// Assignments
+model Assignment {
+  id            String    @id @default(cuid())
+  courseClassId String
+  title         String
+  description   String?
+  dueDate       DateTime?
+  maxScore      Float     @default(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  courseClass CourseClass            @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@index([courseClassId])
+}
+
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  studentId    String
+  fileUrl      String?
+  comment      String?
+  score        Float?
+  submittedAt  DateTime  @default(now())
+  gradedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+// Course Templates for reuse
+model CourseTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  templateData String  // JSON: clos, assessments, mappings
+  createdBy   String   // lecturer staffId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdBy])
+}
+
+// Comments/Feedback
+model Comment {
+  id          String   @id @default(cuid())
+  content     String
+  authorType  String   // "lecturer" or "student"
+  authorId    String   // lecturerId or studentId
+  markEntryId String?  // optional reference to mark
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lecturer  Lecturer?  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  student   Student?   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  markEntry MarkEntry? @relation(fields: [markEntryId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([markEntryId])
+}
+
+// ─────────────────────────────────────────────
+// FYP Assessment System Models
+// ─────────────────────────────────────────────
+
+// Each student's FYP project
+model FypProject {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  studentId    String   @unique
+  supervisorId String?
+  // FYP1 | FYP2
+  phase        String   @default("FYP1")
+  // draft | submitted | approved | rejected | completed
+  status       String   @default("draft")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  supervisor  Lecturer?  @relation("ProjectSupervisor", fields: [supervisorId], references: [id])
+
+  submissions             FypSubmission[]
+  feedbacks               FypFeedback[]
+  assessorAssignments     AssessorAssignment[]
+  supervisorMark          SupervisorMark?
+  assessorMarks           AssessorMark[]
+  coordinatorMark         CoordinatorMark?
+  finalMark               FinalMark?
+  presentationAssessments FypPresentationAssessment[]
+  reportAssessments       FypReportAssessment[]
+  progressDefenseAssessments FypProgressDefenseAssessment[]
+  progressWeek14Assessments  FypProgressWeek14Assessment[]
+
+  @@index([supervisorId])
+}
+
+// Report or presentation slides submitted by student
+model FypSubmission {
+  id          String   @id @default(cuid())
+  projectId   String
+  type        String   // "report" | "slides"
+  fileUrl     String
+  fileName    String
+  fileSize    Int?
+  // pending | approved | rejected
+  status      String   @default("pending")
+  notes       String?
+  version     Int      @default(1)
+  submittedAt DateTime @default(now())
+  reviewedAt  DateTime?
+
+  project FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// Feedback left by supervisor or assessor on a project
+model FypFeedback {
+  id        String   @id @default(cuid())
+  projectId String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  Lecturer   @relation(fields: [authorId], references: [id])
+
+  @@index([projectId])
+  @@index([authorId])
+}
+
+// Presentation schedule managed by coordinator
+model AssessmentSchedule {
+  id          String   @id @default(cuid())
+  title       String
+  scheduledAt DateTime
+  venue       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments AssessorAssignment[]
+}
+
+// Coordinator assigns assessors to projects; optional schedule
+model AssessorAssignment {
+  id         String   @id @default(cuid())
+  projectId  String
+  assessorId String
+  scheduleId String?
+  assignedAt DateTime @default(now())
+
+  project  FypProject          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessor Lecturer            @relation(fields: [assessorId], references: [id])
+  schedule AssessmentSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, assessorId])
+  @@index([projectId])
+  @@index([assessorId])
+}
+
+// Mark given by supervisor
+model SupervisorMark {
+  id           String   @id @default(cuid())
+  projectId    String   @unique
+  supervisorId String
+  mark         Float
+  // Component marks (0-100). Used by the new FYP1/FYP2 calc; legacy `mark` kept for backward compat.
+  progressMark     Float?
+  presentationMark Float?
+  reportMark       Float?
+  paperMark        Float?
+  notes        String?
+  gradedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project    FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supervisor Lecturer   @relation(fields: [supervisorId], references: [id])
+}
+
+// Mark given by an assessor
+model AssessorMark {
+  id         String   @id @default(cuid())
+  projectId  String
+  assessorId String
+  mark       Float
+  // Component marks (0-100).
+  presentationMark Float?
+  reportMark       Float?
+  notes      String?
+  gradedAt   DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project  FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessor Lecturer   @relation(fields: [assessorId], references: [id])
+
+  @@unique([projectId, assessorId])
+  @@index([projectId])
+  @@index([assessorId])
+}
+
+// Progress mark entered by the coordinator (10% component in FYP1/FYP2)
+model CoordinatorMark {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  coordinatorId  String
+  progressMark   Float    // 0-100
+  notes          String?
+  gradedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project     FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  coordinator Lecturer   @relation(fields: [coordinatorId], references: [id])
+
+  @@index([coordinatorId])
+}
+
+// Final mark generated and published by coordinator
+model FinalMark {
+  id               String    @id @default(cuid())
+  projectId        String    @unique
+  supervisorWeight Float     @default(40)
+  assessorWeight   Float     @default(60)
+  finalMark        Float
+  grade            String
+  // Component contributions toward final (already scaled to final-mark points)
+  progressTotal     Float?
+  presentationTotal Float?
+  reportTotal       Float?
+  paperTotal        Float?
+  phase             String?
+  isPublished      Boolean   @default(false)
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  project FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Detailed Presentation Assessment based on UniKL Rubric
+model FypPresentationAssessment {
+  id               String   @id @default(cuid())
+  projectId        String
+  assessorId       String
+
+  // Raw Scores (1-10)
+  s1_introClarity      Float @default(0)
+  s2_objClarity        Float @default(0)
+  s3_contOriginality   Float @default(0)
+  s3_contStructure     Float @default(0)
+  s3_contAppropriate   Float @default(0)
+  s3_contBackground    Float @default(0)
+  s3_contMethod        Float @default(0)
+  s3_contDiagrams      Float @default(0)
+  s4_protoCreativity   Float @default(0)
+  s4_protoDifficulty   Float @default(0)
+  s5_qaAbility         Float @default(0)
+  s5_qaUnderstanding   Float @default(0)
+  s5_qaInterpersonal   Float @default(0)
+  s6_mediaSuitability  Float @default(0)
+  s6_mediaSlides       Float @default(0)
+  s7_skillsAttire      Float @default(0)
+  s7_skillsOrg         Float @default(0)
+
+  totalWeighted    Float    @default(0) // Sum of (score/10 * weightage), max 35
+  comments         String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project  FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessor Lecturer   @relation(fields: [assessorId], references: [id])
+
+  @@unique([projectId, assessorId])
+}
+
+// Detailed Report Assessment based on UniKL Rubric
+model FypReportAssessment {
+  id               String   @id @default(cuid())
+  projectId        String
+  assessorId       String
+
+  // Raw Scores (1-10)
+  s1_bg                Float @default(0) // Research background
+  s1_problem           Float @default(0) // Overview & Problem Statement
+  s1_significance      Float @default(0) // Problem Identification & Significance
+  s1_objScope          Float @default(0) // Objectives & Scope
+
+  s2_theory            Float @default(0) // Theoretical/Journal study
+  s2_relevancy         Float @default(0) // Relevancy of literature
+
+  s3_material          Float @default(0) // Materials & Methods support scope
+  s3_analysis          Float @default(0) // Analysis/Hardware design
+  s3_standard          Float @default(0) // Follow standard steps
+  s3_plan              Float @default(0) // Research Plan (Gantt)
+
+  s4_language          Float @default(0) // Language/Vocabulary
+
+  s5_abide             Float @default(0) // Abide by format
+  s5_org               Float @default(0) // Effectively organized
+
+  totalWeighted    Float    @default(0) // Sum of (score/10 * weightage), max 35
+  comments         String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project  FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessor Lecturer   @relation(fields: [assessorId], references: [id])
+
+  @@unique([projectId, assessorId])
+}
+
+// Detailed Progress Assessment - Topic Defense (Week 4-6)
+model FypProgressDefenseAssessment {
+  id               String   @id @default(cuid())
+  projectId        String
+  assessorId       String
+
+  s1_consultation      Float @default(0)
+  s2_proposal          Float @default(0)
+  s3_research          Float @default(0)
+  s4_aim               Float @default(0)
+  s5_independency      Float @default(0)
+
+  totalWeighted    Float    @default(0) // Sum (score/10 * 4), max 20
+  comments         String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project  FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessor Lecturer   @relation(fields: [assessorId], references: [id])
+
+  @@unique([projectId, assessorId])
+}
+
+// Detailed Progress Assessment - Week 14
+model FypProgressWeek14Assessment {
+  id               String   @id @default(cuid())
+  projectId        String
+  assessorId       String
+
+  s1_consultation      Float @default(0)
+  s2_timelines         Float @default(0)
+  s3_components        Float @default(0)
+  s4_alignment         Float @default(0) // Weight 5 in SS
+  s5_independency      Float @default(0)
+
+  totalWeighted    Float    @default(0) // Sum (score/10 * weights), max 21
+  comments         String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project  FypProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessor Lecturer   @relation(fields: [assessorId], references: [id])
+
+  @@unique([projectId, assessorId])
+}

@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --unikl-blue: #003a8f;
+  --unikl-blue-2: #0d47a1;
+  --unikl-gold: #f2b705;
+  --unikl-bg: #f5f7fa;
+  --unikl-card: #ffffff;
+  --unikl-border: #e5e7eb;
+  --unikl-text: #1f2937;
+  --unikl-muted: #6b7280;
+
+  --background: var(--unikl-bg);
+  --foreground: var(--unikl-text);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* UniKL VLE is primarily light; keep consistent contrast. */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
