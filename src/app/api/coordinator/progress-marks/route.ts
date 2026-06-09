@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdminForApi } from "@/lib/apiAuth";
+import { upsertFinalMarkForProject } from "@/lib/fypFinalMark";
 
 // Coordinator enters the Progress 10% component used by the FYP1/FYP2 scheme.
 const ProgressSchema = z.object({
@@ -35,7 +36,9 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json({ mark });
+    const finalMark = await upsertFinalMarkForProject(payload.projectId);
+
+    return Response.json({ mark, finalMark });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return Response.json({ error: err.flatten() }, { status: 400 });

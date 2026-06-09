@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireLecturerForApi } from "@/lib/apiAuth";
+import { upsertFinalMarkForProject } from "@/lib/fypFinalMark";
 
 const AssessmentSchema = z.object({
   projectId: z.string().min(1),
@@ -129,7 +130,9 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json({ assessment });
+    const updatedFinalMark = await upsertFinalMarkForProject(payload.projectId);
+
+    return Response.json({ assessment, finalMark: updatedFinalMark });
   } catch (err) {
     console.error("Assessor Report POST Error:", err);
     return Response.json({ error: "Internal Server Error" }, { status: 500 });

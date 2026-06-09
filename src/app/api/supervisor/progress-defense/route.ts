@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireLecturerForApi } from "@/lib/apiAuth";
+import { upsertFinalMarkForProject } from "@/lib/fypFinalMark";
 
 const AssessmentSchema = z.object({
   projectId: z.string().min(1),
@@ -70,8 +71,9 @@ export async function POST(request: Request) {
 
     // Update Overall Progress Mark (Average of Defense and Week 14)
     await syncOverallProgress(payload.projectId, auth.lecturer.id);
+    const finalMark = await upsertFinalMarkForProject(payload.projectId);
 
-    return Response.json({ assessment });
+    return Response.json({ assessment, finalMark });
   } catch (err) {
     if (err instanceof z.ZodError) return Response.json({ error: err.flatten() }, { status: 400 });
     return Response.json({ error: "Internal Server Error" }, { status: 500 });

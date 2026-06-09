@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireLecturerForApi } from "@/lib/apiAuth";
+import { upsertFinalMarkForProject } from "@/lib/fypFinalMark";
 
 const CreateProjectSchema = z.object({
   title: z.string().trim().min(3).max(200),
@@ -92,7 +93,9 @@ export async function POST(request: Request) {
       });
     }
 
-    return Response.json({ project }, { status: existing ? 200 : 201 });
+    const finalMark = await upsertFinalMarkForProject(project.id);
+
+    return Response.json({ project: { ...project, finalMark }, finalMark }, { status: existing ? 200 : 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return Response.json({ error: err.flatten() }, { status: 400 });
@@ -129,7 +132,9 @@ export async function PATCH(request: Request) {
       },
     });
 
-    return Response.json({ project });
+    const finalMark = await upsertFinalMarkForProject(project.id);
+
+    return Response.json({ project: { ...project, finalMark }, finalMark });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return Response.json({ error: err.flatten() }, { status: 400 });

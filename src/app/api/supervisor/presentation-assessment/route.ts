@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireLecturerForApi } from "@/lib/apiAuth";
+import { upsertFinalMarkForProject } from "@/lib/fypFinalMark";
 
 const AssessmentSchema = z.object({
   projectId: z.string().min(1),
@@ -121,7 +122,9 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json({ assessment });
+    const finalMark = await upsertFinalMarkForProject(payload.projectId);
+
+    return Response.json({ assessment, finalMark });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return Response.json({ error: err.flatten() }, { status: 400 });

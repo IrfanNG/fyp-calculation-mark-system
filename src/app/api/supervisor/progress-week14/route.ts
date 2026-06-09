@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireLecturerForApi } from "@/lib/apiAuth";
+import { upsertFinalMarkForProject } from "@/lib/fypFinalMark";
 
 const AssessmentSchema = z.object({
   projectId: z.string().min(1),
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
     // 4. Sync Overall Progress
     try {
       await syncOverallProgress(payload.projectId, auth.lecturer.id, project.supervisorId);
+      await upsertFinalMarkForProject(payload.projectId);
     } catch (syncErr) {
       console.error("Progress Week 14 Sync Mark Error (non-fatal):", syncErr);
     }
