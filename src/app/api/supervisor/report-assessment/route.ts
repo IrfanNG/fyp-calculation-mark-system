@@ -87,9 +87,8 @@ export async function POST(request: Request) {
         },
       },
       create: {
-        projectId: payload.projectId,
-        assessorId: auth.lecturer.id,
         ...payload,
+        assessorId: auth.lecturer.id,
         totalWeighted: weightedTotal,
       },
       update: {

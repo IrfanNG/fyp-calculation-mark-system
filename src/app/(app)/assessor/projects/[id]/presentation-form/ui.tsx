@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 type Project = {
   id: string;
   title: string;
+  phase: string;
   student: { name: string; studentId: string };
 };
 
@@ -147,7 +148,7 @@ export default function AssessorPresentationFormClient() {
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 bg-white shadow-lg rounded-xl border border-gray-200 my-8">
       <div className="bg-gradient-to-r from-purple-900 to-purple-700 p-6 rounded-t-xl text-white mb-6">
-        <h1 className="text-2xl font-bold">Assessor: FYP1 Presentation Rubric</h1>
+        <h1 className="text-2xl font-bold">Assessor: {project.phase} Presentation Rubric</h1>
         <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm opacity-90">
           <p><span className="opacity-70">Project:</span> <span className="font-semibold">{project.title}</span></p>
           <p><span className="opacity-70">Student:</span> <span className="font-semibold">{project.student.name} ({project.student.studentId})</span></p>

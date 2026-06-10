@@ -2,17 +2,22 @@
 
 import { useEffect, useState } from "react";
 
-type Student = { id: string; studentId: string; name: string };
 type Supervisor = { id: string; staffId: string; name: string };
 type Project = {
   id: string;
   title: string;
   description?: string;
   status: string;
-  student: Student;
+  phase: string;
   supervisor: Supervisor;
   finalMark?: { finalMark: number; grade: string; isPublished: boolean } | null;
   assessorAssignments: { assessor: Supervisor }[];
+};
+type StudentWithProject = {
+  id: string;
+  studentId: string;
+  name: string;
+  fypProject: Project | null;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -23,9 +28,14 @@ const STATUS_COLORS: Record<string, string> = {
   completed: "bg-purple-100 text-purple-700",
 };
 
+function formatFinalMark(finalMark: { finalMark: number; grade: string; isPublished: boolean } | null | undefined) {
+  if (!finalMark) return null;
+  return `${finalMark.finalMark.toFixed(1)} (${finalMark.grade})${finalMark.isPublished ? " ✔" : " (draft)"}`;
+}
+
 export default function CoordinatorProjectsClient() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentWithProject[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<StudentWithProject[]>([]);
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +52,14 @@ export default function CoordinatorProjectsClient() {
     setLoading(true);
     setError(null);
     try {
-      const [pRes, sRes, lRes] = await Promise.all([
+      const [pRes, lRes] = await Promise.all([
         fetch("/api/coordinator/projects"),
-        fetch("/api/admin/students"),
         fetch("/api/admin/lecturers"),
       ]);
-      const [pData, sData, lData] = await Promise.all([pRes.json(), sRes.json(), lRes.json()]);
-      setProjects(pData.projects ?? []);
-      setStudents((sData.students ?? []).filter((s: any) => !pData.projects.some((p: Project) => p.student.id === s.id)));
+      const [pData, lData] = await Promise.all([pRes.json(), lRes.json()]);
+      const allStudents = pData.students ?? [];
+      setStudents(allStudents);
+      setAvailableStudents(allStudents.filter((s: StudentWithProject) => !s.fypProject));
       setSupervisors((lData.lecturers ?? []).filter((l: any) => !l.isAdmin));
     } catch {
       setError("Failed to load data");
@@ -87,7 +97,7 @@ export default function CoordinatorProjectsClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">All FYP Projects</h1>
-          <p className="text-sm text-(--unikl-muted)">{projects.length} project(s) total</p>
+          <p className="text-sm text-(--unikl-muted)">{students.length} student(s) total</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -125,7 +135,7 @@ export default function CoordinatorProjectsClient() {
                 className="w-full rounded-md border border-(--unikl-border) px-3 py-2 text-sm" required
               >
                 <option value="">Select student…</option>
-                {students.map((s) => (
+                {availableStudents.map((s) => (
                   <option key={s.id} value={s.id}>{s.name} ({s.studentId})</option>
                 ))}
               </select>
@@ -165,50 +175,79 @@ export default function CoordinatorProjectsClient() {
               <th className="px-4 py-2 font-medium">Supervisor</th>
               <th className="px-4 py-2 font-medium">Assessor(s)</th>
               <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2 font-medium">FYP1 Mark</th>
+              <th className="px-4 py-2 font-medium">FYP2 Mark</th>
               <th className="px-4 py-2 font-medium">Final Mark</th>
             </tr>
           </thead>
           <tbody>
-            {projects.length === 0 ? (
+            {students.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-(--unikl-muted) text-center">
-                  No projects yet. Click "Assign FYP Project" to get started.
+                <td colSpan={8} className="px-4 py-4 text-(--unikl-muted) text-center">
+                  No students yet.
                 </td>
               </tr>
             ) : (
-              projects.map((p) => (
-                <tr key={p.id} className="border-t border-(--unikl-border)">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{p.student.name}</div>
-                    <div className="text-xs text-(--unikl-muted)">{p.student.studentId}</div>
-                  </td>
-                  <td className="px-4 py-3 max-w-xs">
-                    <div className="truncate font-medium">{p.title}</div>
-                    {p.description && <div className="text-xs text-(--unikl-muted) truncate">{p.description}</div>}
-                  </td>
-                  <td className="px-4 py-3">{p.supervisor.name}</td>
-                  <td className="px-4 py-3">
-                    {p.assessorAssignments.length === 0 ? (
-                      <span className="text-(--unikl-muted)">—</span>
-                    ) : (
-                      p.assessorAssignments.map((a) => a.assessor.name).join(", ")
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_COLORS[p.status] ?? ""}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.finalMark ? (
-                      <span className={p.finalMark.isPublished ? "text-green-700 font-semibold" : "text-gray-500"}>
-                        {p.finalMark.finalMark.toFixed(1)} ({p.finalMark.grade})
-                        {p.finalMark.isPublished ? " ✓" : " (draft)"}
-                      </span>
-                    ) : "—"}
-                  </td>
-                </tr>
-              ))
+              students.map((s) => {
+                const project = s.fypProject;
+                const fyp1Mark = project?.phase === "FYP1" ? formatFinalMark(project.finalMark) : null;
+                const fyp2Mark = project?.phase === "FYP2" ? formatFinalMark(project.finalMark) : null;
+                const finalMark = formatFinalMark(project?.finalMark ?? null);
+                return (
+                  <tr key={s.id} className="border-t border-(--unikl-border)">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{s.name}</div>
+                      <div className="text-xs text-(--unikl-muted)">{s.studentId}</div>
+                    </td>
+                    <td className="px-4 py-3 max-w-xs">
+                      {project ? (
+                        <>
+                          <div className="truncate font-medium">{project.title}</div>
+                          {project.description && <div className="text-xs text-(--unikl-muted) truncate">{project.description}</div>}
+                        </>
+                      ) : (
+                        <span className="text-(--unikl-muted)">Not assigned yet</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {project?.supervisor?.name || <span className="text-(--unikl-muted)">Not assigned yet</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      {project && project.assessorAssignments.length > 0 ? (
+                        project.assessorAssignments.map((a) => a.assessor.name).join(", ")
+                      ) : (
+                        <span className="text-(--unikl-muted)">Not assigned yet</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {project ? (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_COLORS[project.status] ?? ""}`}>
+                          {project.status}
+                        </span>
+                      ) : (
+                        <span className="rounded-full px-2 py-0.5 text-xs font-medium capitalize bg-gray-100 text-gray-600">
+                          Not Assigned
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {fyp1Mark ? (
+                        <span className={project?.finalMark?.isPublished ? "text-green-700 font-semibold" : "text-gray-500"}>{fyp1Mark}</span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {fyp2Mark ? (
+                        <span className={project?.finalMark?.isPublished ? "text-green-700 font-semibold" : "text-gray-500"}>{fyp2Mark}</span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {finalMark ? (
+                        <span className={project?.finalMark?.isPublished ? "text-green-700 font-semibold" : "text-gray-500"}>{finalMark}</span>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

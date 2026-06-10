@@ -8,7 +8,7 @@ import { isValidUniklId, isStrongPassword, UNIKL_ID_MESSAGE, PASSWORD_POLICY_MES
 const SignupSchema = z.object({
   studentId: z.string().min(1),
   name: z.string().min(1),
-  password: z.string().min(6),
+  password: z.string().min(1),
 });
 
 export async function POST(request: Request) {
@@ -50,7 +50,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ student: { id: student.id, studentId: student.studentId, name: student.name } });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: err.flatten() }, { status: 400 });
+      const fieldErrors = Object.values(err.flatten().fieldErrors)
+        .flat()
+        .filter(Boolean);
+      return NextResponse.json(
+        { error: fieldErrors[0] || "Invalid signup details" },
+        { status: 400 }
+      );
     }
     const msg = err instanceof Error ? err.message : "Signup failed";
     return NextResponse.json({ error: msg }, { status: 400 });

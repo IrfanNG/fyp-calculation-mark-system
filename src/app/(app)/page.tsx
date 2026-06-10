@@ -22,13 +22,16 @@ export default async function Home() {
     prisma.finalMark.count({ where: { isPublished: true } }),
   ]);
 
-  const recentProjects = await prisma.fypProject.findMany({
+  const students = await prisma.student.findMany({
     take: 8,
-    orderBy: { updatedAt: "desc" },
+    orderBy: { createdAt: "desc" },
     include: {
-      student: { select: { studentId: true, name: true } },
-      supervisor: { select: { name: true } },
-      finalMark: true,
+      fypProject: {
+        include: {
+          supervisor: { select: { name: true } },
+          finalMark: true,
+        },
+      },
     },
   });
 
@@ -39,6 +42,11 @@ export default async function Home() {
     rejected: "bg-red-100 text-red-700",
     completed: "bg-purple-100 text-purple-700",
   };
+
+  function formatFinalMark(finalMark: any) {
+    if (!finalMark) return null;
+    return `${finalMark.finalMark.toFixed(1)} (${finalMark.grade})${finalMark.isPublished ? " ✔" : " (draft)"}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -80,41 +88,77 @@ export default async function Home() {
                 <th className="px-4 py-2 font-medium">Title</th>
                 <th className="px-4 py-2 font-medium">Supervisor</th>
                 <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">FYP1 Mark</th>
+                <th className="px-4 py-2 font-medium">FYP2 Mark</th>
                 <th className="px-4 py-2 font-medium">Final Mark</th>
               </tr>
             </thead>
             <tbody>
-              {recentProjects.length === 0 ? (
+              {students.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-(--unikl-muted)">
-                    No projects yet. Go to <Link href="/coordinator/projects" className="text-(--unikl-blue) underline">All Projects</Link> to create one.
+                  <td colSpan={7} className="px-4 py-4 text-(--unikl-muted)">
+                    No students yet.
                   </td>
                 </tr>
               ) : (
-                recentProjects.map((p) => (
-                  <tr key={p.id} className="border-t border-(--unikl-border)">
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{p.student.name}</div>
-                      <div className="text-xs text-(--unikl-muted)">{p.student.studentId}</div>
-                    </td>
-                    <td className="px-4 py-3 max-w-xs truncate">{p.title}</td>
-                    <td className="px-4 py-3">{p.supervisor.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusColor[p.status] ?? ""}`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.finalMark ? (
-                        <span className={`font-semibold ${p.finalMark.isPublished ? "text-green-700" : "text-gray-500"}`}>
-                          {p.finalMark.finalMark.toFixed(1)} ({p.finalMark.grade}){p.finalMark.isPublished ? " ✓" : " (draft)"}
-                        </span>
-                      ) : (
-                        <span className="text-(--unikl-muted)">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                students.map((s) => {
+                  const project = s.fypProject;
+                  const fyp1Mark = project?.phase === "FYP1" ? formatFinalMark(project.finalMark) : null;
+                  const fyp2Mark = project?.phase === "FYP2" ? formatFinalMark(project.finalMark) : null;
+                  const finalMark = formatFinalMark(project?.finalMark ?? null);
+                  return (
+                    <tr key={s.id} className="border-t border-(--unikl-border)">
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{s.name}</div>
+                        <div className="text-xs text-(--unikl-muted)">{s.studentId}</div>
+                      </td>
+                      <td className="px-4 py-3 max-w-xs truncate">
+                        {project?.title || "Not assigned yet"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {project?.supervisor?.name || "Not assigned yet"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {project ? (
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusColor[project.status] ?? ""}`}>
+                            {project.status}
+                          </span>
+                        ) : (
+                          <span className="rounded-full px-2 py-0.5 text-xs font-medium capitalize bg-gray-100 text-gray-600">
+                            Not assigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {fyp1Mark ? (
+                          <span className={`font-semibold ${project?.finalMark?.isPublished ? "text-green-700" : "text-gray-500"}`}>
+                            {fyp1Mark}
+                          </span>
+                        ) : (
+                          <span className="text-(--unikl-muted)">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {fyp2Mark ? (
+                          <span className={`font-semibold ${project?.finalMark?.isPublished ? "text-green-700" : "text-gray-500"}`}>
+                            {fyp2Mark}
+                          </span>
+                        ) : (
+                          <span className="text-(--unikl-muted)">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {finalMark ? (
+                          <span className={`font-semibold ${project?.finalMark?.isPublished ? "text-green-700" : "text-gray-500"}`}>
+                            {finalMark}
+                          </span>
+                        ) : (
+                          <span className="text-(--unikl-muted)">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

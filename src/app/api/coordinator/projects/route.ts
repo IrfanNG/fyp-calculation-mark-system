@@ -19,22 +19,25 @@ export async function GET() {
   const auth = await requireAdminForApi();
   if (auth.errorResponse) return auth.errorResponse;
 
-  const projects = await prisma.fypProject.findMany({
+  const students = await prisma.student.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      student: { select: { id: true, studentId: true, name: true } },
-      supervisor: { select: { id: true, staffId: true, name: true } },
-      supervisorMark: true,
-      assessorMarks: true,
-      coordinatorMark: true,
-      finalMark: true,
-      assessorAssignments: {
-        include: { assessor: { select: { id: true, staffId: true, name: true } } },
+      fypProject: {
+        include: {
+          supervisor: { select: { id: true, staffId: true, name: true } },
+          supervisorMark: true,
+          assessorMarks: true,
+          coordinatorMark: true,
+          finalMark: true,
+          assessorAssignments: {
+            include: { assessor: { select: { id: true, staffId: true, name: true } } },
+          },
+        },
       },
     },
   });
 
-  return Response.json({ projects });
+  return Response.json({ students });
 }
 
 export async function PATCH(request: Request) {

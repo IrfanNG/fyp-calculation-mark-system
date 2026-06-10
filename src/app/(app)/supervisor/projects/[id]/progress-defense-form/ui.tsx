@@ -137,35 +137,36 @@ export default function ProgressDefenseFormClient() {
                 description="Discussion, Title/Problem statement presentation, Feedback seeking, Recording comments."
                 weight={4}
                 value={formData.s1_consultation}
-                onChange={(v) => handleChange("s1_consultation", v)}
+                onChange={(v: number) => handleChange("s1_consultation", v)}
               />
               <RubricRow
                 label="2. Proposal and Early planning"
                 description="Intro/BG, Problem statement, Obj/Scope, Literature review, Methodology, Gantt chart."
                 weight={4}
                 value={formData.s2_proposal}
-                onChange={(v) => handleChange("s2_proposal", v)}
+                onChange={(v: number) => handleChange("s2_proposal", v)}
               />
               <RubricRow
                 label="3. Research Progress"
                 description="Understanding of problem, Relevance, Initial comparison, Suitable methodology, Expected outcome."
                 weight={4}
                 value={formData.s3_research}
-                onChange={(v) => handleChange("s3_research", v)}
+                onChange={(v: number) => handleChange("s3_research", v)}
               />
               <RubricRow
                 label="4. Project Aim"
                 description="Alignment with security domains (System, Mobile, Network, App, Web, OS, IOT, AI, etc)."
                 weight={4}
                 value={formData.s4_aim}
-                onChange={(v) => handleChange("s4_aim", v)}
+                onChange={(v: number) => handleChange("s4_aim", v)}
               />
               <RubricRow
                 label="5. Self-driven & Independency"
                 description="Idea explanation clarity, Confidence during defense, Structured progress, Openness to feedback."
                 weight={4}
                 value={formData.s5_independency}
-                onChange={(v) => handleChange("s5_independency", v)}
+                onChange={(v: number) =>
+               handleChange("s5_independency", v)}
               />
             </tbody>
             <tfoot className="bg-orange-100 text-orange-900">

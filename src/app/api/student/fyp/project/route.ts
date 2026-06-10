@@ -73,7 +73,13 @@ export async function POST(req: Request) {
     return Response.json({ project });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return Response.json({ error: error.errors }, { status: 400 });
+      const fieldErrors = Object.values(error.flatten().fieldErrors)
+        .flat()
+        .filter(Boolean);
+      return Response.json(
+        { error: fieldErrors[0] || "Invalid data" },
+        { status: 400 }
+      );
     }
     return Response.json({ error: "Failed to submit proposal" }, { status: 500 });
   }

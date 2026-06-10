@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 type Project = {
   id: string;
   title: string;
+  phase: string;
   student: { name: string; studentId: string };
 };
 
@@ -145,7 +146,7 @@ export default function PresentationFormClient() {
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 bg-white shadow-lg rounded-xl border border-gray-200 my-8">
       <div className="bg-gradient-to-r from-blue-900 to-blue-700 p-6 rounded-t-xl text-white mb-6">
-        <h1 className="text-2xl font-bold">FYP1 Presentation Assessment Form</h1>
+        <h1 className="text-2xl font-bold">{project.phase} Presentation Assessment Form</h1>
         <div className="mt-2 grid grid-cols-2 gap-4 text-sm opacity-90">
           <p>Project: <span className="font-semibold">{project.title}</span></p>
           <p>Student: <span className="font-semibold">{project.student.name} ({project.student.studentId})</span></p>

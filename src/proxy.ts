@@ -27,7 +27,14 @@ function isPublicPath(pathname: string) {
   return false;
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
+  if (req.method === "TRACE") {
+    return new NextResponse(null, {
+      status: 405,
+      headers: { Allow: "GET, POST, PUT, PATCH, DELETE, OPTIONS" },
+    });
+  }
+
   const { pathname } = req.nextUrl;
   if (isPublicPath(pathname)) return NextResponse.next();
 

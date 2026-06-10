@@ -7,7 +7,7 @@ import { isValidUniklId, isStrongPassword, UNIKL_ID_MESSAGE, PASSWORD_POLICY_MES
 const BodySchema = z.object({
   staffId: z.string().trim().min(3).max(32),
   name: z.string().trim().min(2).max(80),
-  password: z.string().min(6).max(200),
+  password: z.string().min(1).max(200),
   courseIds: z.array(z.string().min(1)).max(20).optional(),
 });
 
@@ -18,7 +18,14 @@ function defaultClassNames() {
 export async function POST(req: Request) {
   const parsed = BodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    const fieldErrors = Object.values(parsed.error.flatten().fieldErrors)
+      .flat()
+      .filter(Boolean);
+
+    return NextResponse.json(
+      { error: fieldErrors[0] || "Invalid signup details" },
+      { status: 400 }
+    );
   }
 
   const { staffId, name, password, courseIds } = parsed.data;

@@ -70,11 +70,31 @@ export default function FinalMarksClient() {
       ]);
       const marksData = await marksRes.json();
       const projectsData = await projectsRes.json();
-      setMarks(marksData.marks ?? []);
-      setProjects(projectsData.projects ?? []);
-      // Prefill progress inputs
+
+      const projectRows = (projectsData.projects ?? projectsData.students ?? [])
+        .map((item: any) => {
+          if (item.student && item.title) return item;
+          if (!item.fypProject) return null;
+
+          return {
+            id: item.fypProject.id,
+            title: item.fypProject.title,
+            phase: item.fypProject.phase,
+            student: {
+              studentId: item.studentId,
+              name: item.name,
+            },
+            supervisor: item.fypProject.supervisor,
+            supervisorMark: item.fypProject.supervisorMark,
+            assessorMarks: item.fypProject.assessorMarks ?? [],
+            coordinatorMark: item.fypProject.coordinatorMark,
+          };
+        })
+        .filter(Boolean);
+
+      setProjects(projectRows);
       const inputs: Record<string, string> = {};
-      for (const p of projectsData.projects ?? []) {
+      for (const p of projectRows) {
         if (p.coordinatorMark?.progressMark != null) {
           inputs[p.id] = String(p.coordinatorMark.progressMark);
         }
