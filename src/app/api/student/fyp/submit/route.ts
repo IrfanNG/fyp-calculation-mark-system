@@ -29,9 +29,7 @@ export async function POST(request: Request) {
     if (!project) return Response.json({ error: "No FYP project assigned" }, { status: 404 });
 
     const ext = file.name.split(".").pop();
-    const ts = Date.now();
-    const rand = Math.random().toString(36).slice(2, 8);
-    const filename = `fyp_${student.id}_${type}_${ts}_${rand}.${ext}`;
+    const filename = `fyp_${type}_${crypto.randomUUID()}.${ext}`;
 
     const uploadsDir = join(process.cwd(), "public", "uploads");
     await mkdir(uploadsDir, { recursive: true });

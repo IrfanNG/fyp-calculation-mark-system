@@ -23,13 +23,6 @@ export async function POST(request: Request) {
     const json = await request.json();
     const payload = SubmitSchema.parse(json);
     
-    console.log("🔍 Submit Debug:", {
-      sessionStudentId: session.studentId,
-      assignmentId: payload.assignmentId,
-      comment: payload.comment,
-      fileUrl: payload.fileUrl,
-    });
-
     // Check if assignment exists
     const assignment = await prisma.assignment.findUnique({
       where: { id: payload.assignmentId },
@@ -67,8 +60,6 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log("🔍 Existing submission:", existing ? `Found (id: ${existing.id})` : "Not found - creating new");
-
     if (existing) {
       // Update existing submission
       const updated = await prisma.assignmentSubmission.update({
@@ -79,7 +70,6 @@ export async function POST(request: Request) {
           submittedAt: new Date(),
         },
       });
-      console.log("✅ Updated submission:", updated.id);
       return Response.json({ submission: updated });
     } else {
       // Create new submission
@@ -91,7 +81,6 @@ export async function POST(request: Request) {
           fileUrl: payload.fileUrl || null,
         },
       });
-      console.log("✅ Created submission:", submission.id);
       return Response.json({ submission }, { status: 201 });
     }
   } catch (err) {

@@ -31,13 +31,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get file extension
-    const fileExtension = file.name.split(".").pop();
-    
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 8);
-    const filename = `${session.studentId}_${timestamp}_${randomString}.${fileExtension}`;
+    const ext = file.name.split(".").pop();
+    const filename = `upload_${crypto.randomUUID()}.${ext}`;
 
     // Convert file to buffer
     const bytes = await file.arrayBuffer();

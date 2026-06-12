@@ -41,12 +41,6 @@ export async function GET(request: Request) {
       },
     });
 
-    console.log("🔍 Fetching assignments for student:", session.studentId);
-    console.log("📊 Found assignments:", assignments.length);
-    assignments.forEach((a) => {
-      console.log(`  - ${a.title}: ${a.submissions.length} submissions`);
-    });
-
     return Response.json({ assignments });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
